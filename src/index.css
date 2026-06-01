@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Monocraft";
+  src: url("./assets/fonts/Monocraft.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  --font-mc: "Monocraft", ui-monospace, "Courier New", monospace;
+}
+
+html {
+  /* Keep the pixel font crisp — no anti-aliasing smoothing. */
+  -webkit-font-smoothing: none;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-mc);
+}

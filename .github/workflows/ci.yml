@@ -1,0 +1,29 @@
+name: CI
+
+# Fast, hermetic verification on every push and PR: lint, unit tests, and a
+# production build. No browser needed.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch: {}
+
+# Only keep the latest run per branch/PR; cancel superseded ones to save minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Lint, test, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
