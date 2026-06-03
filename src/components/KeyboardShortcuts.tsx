@@ -9,8 +9,9 @@ const TOOL_KEYS: Record<string, Tool> = {
   g: 'fill',
   i: 'eyedropper',
   s: 'select',
+  m: 'select',
   v: 'move',
-  m: 'move',
+  h: 'move',
 }
 
 /** Global keyboard shortcuts. Renders nothing. */
@@ -59,6 +60,17 @@ export function KeyboardShortcuts() {
       if (mod && key === 'v') {
         e.preventDefault()
         dispatch({ type: 'PASTE_CLIPBOARD' })
+        return
+      }
+      if (mod && key === 'd') {
+        e.preventDefault()
+        dispatch({ type: 'SET_SELECTION', rect: null })
+        return
+      }
+      if (mod && key === 'x') {
+        e.preventDefault()
+        dispatch({ type: 'COPY_SELECTION' })
+        dispatch({ type: 'DELETE_SELECTION' })
         return
       }
       if (mod) return // leave other modified combos alone

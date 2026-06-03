@@ -4,6 +4,11 @@
 
 [![CI](https://img.shields.io/github/actions/workflow/status/MadeOfBees/8BitSVG/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/MadeOfBees/8BitSVG/actions/workflows/ci.yml)
 [![Live demo](https://img.shields.io/badge/demo-live-brightgreen?style=flat-square)](https://madeofbees.github.io/8BitSVG/)
+[![PWA](https://img.shields.io/badge/PWA-installable-5A0FC8?style=flat-square&logo=pwa)](https://madeofbees.github.io/8BitSVG/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![GitHub Stars](https://img.shields.io/github/stars/MadeOfBees/8BitSVG?style=flat-square)](https://github.com/MadeOfBees/8BitSVG/stargazers)
 [![License](https://img.shields.io/github/license/MadeOfBees/8BitSVG?style=flat-square)](LICENSE)
 
 **Draw pixel art in the browser, crop it, and export a clean transparent SVG, a pasteable React component, or a PNG — 100% in your browser.**
@@ -137,11 +142,11 @@ A few deliberate choices worth calling out:
 | `E` | Eraser | `⌘/Ctrl + ⇧ + Z` · `Ctrl + Y` | Redo |
 | `G` | Fill bucket | `⌘/Ctrl + A` | Select whole canvas |
 | `I` | Eyedropper | `⌘/Ctrl + C` | Copy selection |
-| `S` | Select | `⌘/Ctrl + V` | Paste |
-| `V` / `M` | Move grid | `+` / `=` | Zoom in |
-| `Esc` | Clear selection | `-` | Zoom out |
-| `Delete` / `Backspace` | Delete selection | scroll wheel | Zoom (over the workspace) |
-| Arrow keys | Move grid (one cell per press) | | |
+| `S` / `M` | Select | `⌘/Ctrl + X` | Cut selection |
+| `V` / `H` | Move grid | `⌘/Ctrl + V` | Paste |
+| `Esc` · `⌘/Ctrl + D` | Clear selection | `+` / `=` | Zoom in |
+| `Delete` / `Backspace` | Delete selection | `-` | Zoom out |
+| Arrow keys | Move grid (one cell per press) | scroll wheel | Zoom (over the workspace) |
 
 Shortcuts are ignored while you're typing in an input or textarea.
 
@@ -153,8 +158,7 @@ Shortcuts are ignored while you're typing in an input or textarea.
 - [react-icons](https://react-icons.github.io/react-icons/) (Lucide set) for the
   monochrome tool icons
 - [Monocraft](https://github.com/IdreesInc/Monocraft) for the pixel font
-- [Vitest](https://vitest.dev/) for unit tests, and [Playwright](https://playwright.dev/)
-  for on-demand visual checks
+- [Vitest](https://vitest.dev/) for unit tests
 
 ## Requirements
 
@@ -181,11 +185,6 @@ npm test             # unit tests (Vitest)
 npm run test:watch   # Vitest in watch mode
 ```
 
-There's also a visual-check harness, [`scripts/shot.mjs`](scripts/shot.mjs): it boots the
-dev server, paints a few cells, opens the export modal, and writes `scripts/shot-page.png`
-and `scripts/shot-modal.png`. Run it with `node scripts/shot.mjs` (first run only:
-`npx playwright install chromium`). The screenshots are gitignored.
-
 ## Project structure
 
 ```text
@@ -207,8 +206,6 @@ src/
     ExportModal.tsx      drag-to-crop preview + SVG / React / PNG tabs + copy / download
     KeyboardShortcuts.tsx  global keydown handler (renders nothing)
   index.css              Tailwind v4 entry + Monocraft @font-face + crisp-pixel resets
-scripts/
-  shot.mjs               Playwright visual-check harness (writes shot-*.png)
 ```
 
 ## Testing
@@ -221,8 +218,6 @@ logic that's most worth a safety net — the grid model and the SVG exporter:
 - [`src/lib/svg.test.ts`](src/lib/svg.test.ts) — greedy meshing (merging, transparency,
   the exact-cover / no-overlap invariant, and crop bounds), color grouping, the SVG
   `viewBox` / transparent output, and the shape of the generated React component.
-
-The UI itself is checked by eye with `scripts/shot.mjs` (see [Commands](#commands)).
 
 CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs lint + tests + build on
 every push and PR.
@@ -248,8 +243,7 @@ VITE_BASE=/my-repo/ npm run build
 
 ## Contributing
 
-`npm test` is the fast gate — run it before every push; it's what CI runs first. For UI
-changes, verify by eye with `node scripts/shot.mjs` (first run: `npx playwright install chromium`).
+`npm test` is the fast gate — run it before every push; it's what CI runs first. For UI changes, verify by eye in the browser.
 
 ## License
 
