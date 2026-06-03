@@ -8,9 +8,9 @@ export interface Grid {
   cells: Cell[]
 }
 
-export type Tool = 'pencil' | 'eraser' | 'fill' | 'eyedropper' | 'move'
+export type Tool = 'pencil' | 'eraser' | 'fill' | 'eyedropper' | 'move' | 'select'
 
-/** A rectangular crop region in cell coordinates (inclusive of x/y, sized w/h). */
+/** A rectangular region in cell coordinates — used for selections, crop bounds, and content queries. */
 export interface Bounds {
   x: number
   y: number
@@ -25,4 +25,4 @@ export interface Project {
   activeColor: string
 }
 
-export const SIZE_PRESETS = [8, 16, 32, 64] as const
+export const SIZE_PRESETS = [8, 16, 32, 64, 128, 256] as const

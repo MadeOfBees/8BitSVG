@@ -1,6 +1,16 @@
 import type { Bounds, Grid } from '../types'
 import { getCell } from './grid'
 
+/** Escape characters that are unsafe inside an XML attribute value. */
+function escapeAttr(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')
+}
+
+/** Validate that a string is a legal JavaScript identifier, falling back to a safe default. */
+function safeIdentifier(name: string, fallback: string): string {
+  return /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(name) ? name : fallback
+}
+
 export interface Rect {
   x: number
   y: number
@@ -62,6 +72,17 @@ export interface SvgOptions {
   scale?: number
 }
 
+/** Group an array of rects by color, preserving order of first occurrence. */
+function groupByColor(rects: Rect[]): Map<string, Rect[]> {
+  const map = new Map<string, Rect[]>()
+  for (const r of rects) {
+    const group = map.get(r.color)
+    if (group) group.push(r)
+    else map.set(r.color, [r])
+  }
+  return map
+}
+
 /** Build a standalone SVG string with a transparent background. */
 export function toSvgString(
   grid: Grid,
@@ -70,15 +91,23 @@ export function toSvgString(
 ): string {
   const scale = opts.scale ?? 16
   const rects = greedyMesh(grid, bounds)
-  const body = rects
-    .map(
-      (r) =>
-        `  <rect x="${r.x}" y="${r.y}" width="${r.width}" height="${r.height}" fill="${r.color}"/>`,
-    )
-    .join('\n')
+  const groups = groupByColor(rects)
+  const lines: string[] = []
+  for (const [color, group] of groups) {
+    if (group.length === 1) {
+      const r = group[0]
+      lines.push(`  <rect x="${r.x}" y="${r.y}" width="${r.width}" height="${r.height}" fill="${escapeAttr(color)}"/>`)
+    } else {
+      lines.push(`  <g fill="${escapeAttr(color)}">`)
+      for (const r of group) {
+        lines.push(`    <rect x="${r.x}" y="${r.y}" width="${r.width}" height="${r.height}"/>`)
+      }
+      lines.push(`  </g>`)
+    }
+  }
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${bounds.width * scale}" height="${bounds.height * scale}" viewBox="0 0 ${bounds.width} ${bounds.height}" shape-rendering="crispEdges">`,
-    body,
+    ...lines,
     `</svg>`,
   ].join('\n')
 }
@@ -89,17 +118,26 @@ export function toReactComponent(
   bounds: Bounds,
   componentName = 'PixelArt',
 ): string {
+  const safeName = safeIdentifier(componentName, 'PixelArt')
   const rects = greedyMesh(grid, bounds)
-  const body = rects
-    .map(
-      (r) =>
-        `      <rect x={${r.x}} y={${r.y}} width={${r.width}} height={${r.height}} fill="${r.color}" />`,
-    )
-    .join('\n')
+  const groups = groupByColor(rects)
+  const bodyLines: string[] = []
+  for (const [color, group] of groups) {
+    if (group.length === 1) {
+      const r = group[0]
+      bodyLines.push(`      <rect x={${r.x}} y={${r.y}} width={${r.width}} height={${r.height}} fill="${escapeAttr(color)}" />`)
+    } else {
+      bodyLines.push(`      <g fill="${escapeAttr(color)}">`)
+      for (const r of group) {
+        bodyLines.push(`        <rect x={${r.x}} y={${r.y}} width={${r.width}} height={${r.height}} />`)
+      }
+      bodyLines.push(`      </g>`)
+    }
+  }
   return [
     `import type { SVGProps } from 'react'`,
     ``,
-    `export function ${componentName}(props: SVGProps<SVGSVGElement>) {`,
+    `export function ${safeName}(props: SVGProps<SVGSVGElement>) {`,
     `  return (`,
     `    <svg`,
     `      xmlns="http://www.w3.org/2000/svg"`,
@@ -107,7 +145,7 @@ export function toReactComponent(
     `      shapeRendering="crispEdges"`,
     `      {...props}`,
     `    >`,
-    body,
+    ...bodyLines,
     `    </svg>`,
     `  )`,
     `}`,

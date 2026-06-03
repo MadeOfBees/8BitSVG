@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useEditor } from '../state/useEditor'
 import type { Tool } from '../types'
 
@@ -8,13 +8,16 @@ const TOOL_KEYS: Record<string, Tool> = {
   e: 'eraser',
   g: 'fill',
   i: 'eyedropper',
+  s: 'select',
   v: 'move',
   m: 'move',
 }
 
 /** Global keyboard shortcuts. Renders nothing. */
 export function KeyboardShortcuts() {
-  const { dispatch } = useEditor()
+  const { dispatch, present } = useEditor()
+  const presentRef = useRef(present)
+  useEffect(() => { presentRef.current = present }, [present])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -42,7 +45,33 @@ export function KeyboardShortcuts() {
         dispatch({ type: 'REDO' })
         return
       }
+      if (mod && key === 'a') {
+        e.preventDefault()
+        const g = presentRef.current
+        dispatch({ type: 'SET_SELECTION', rect: { x: 0, y: 0, width: g.width, height: g.height } })
+        return
+      }
+      if (mod && key === 'c') {
+        e.preventDefault()
+        dispatch({ type: 'COPY_SELECTION' })
+        return
+      }
+      if (mod && key === 'v') {
+        e.preventDefault()
+        dispatch({ type: 'PASTE_CLIPBOARD' })
+        return
+      }
       if (mod) return // leave other modified combos alone
+
+      if (e.key === 'Escape') {
+        dispatch({ type: 'SET_SELECTION', rect: null })
+        return
+      }
+
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        dispatch({ type: 'DELETE_SELECTION' })
+        return
+      }
 
       if (key === '=' || key === '+') {
         dispatch({ type: 'ZOOM_BY', delta: 2 })

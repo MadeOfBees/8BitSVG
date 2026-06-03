@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useEditor } from '../state/useEditor'
 
 /** Expand #abc → #aabbcc; return a normalized 6-digit hex or null. */
@@ -14,6 +14,8 @@ function normalizeHex(input: string): string | null {
 export function ColorPanel() {
   const { activeColor, swatches, dispatch } = useEditor()
   const [hexDraft, setHexDraft] = useState(activeColor)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const paletteInputRef = useRef<HTMLInputElement>(null)
 
   // Sync the draft when the color changes elsewhere (picker, eyedropper, swatch).
   // Adjusting state during render is React's recommended pattern over an effect.
@@ -33,6 +35,44 @@ export function ColorPanel() {
 
   const addCurrentSwatch = () =>
     dispatch({ type: 'ADD_SWATCH', color: activeColor })
+
+  const savePalette = () => {
+    const blob = new Blob([JSON.stringify({ swatches }, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'palette.json'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 10_000)
+  }
+
+  const loadPalette = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      try {
+        const json = JSON.parse(reader.result as string)
+        const list: unknown = json?.swatches
+        if (
+          !Array.isArray(list) ||
+          !list.every((c) => typeof c === 'string' && /^#[0-9a-fA-F]{6}$/i.test(c))
+        ) {
+          setLoadError('Invalid palette file.')
+          setTimeout(() => setLoadError(null), 3000)
+          return
+        }
+        dispatch({ type: 'LOAD_SWATCHES', swatches: list as string[] })
+      } catch {
+        setLoadError('Could not parse JSON.')
+        setTimeout(() => setLoadError(null), 3000)
+      }
+    }
+    reader.readAsText(file)
+  }
 
   return (
     <div className="flex w-56 flex-col gap-4 border-l border-white/10 bg-neutral-900/80 p-4">
@@ -98,6 +138,32 @@ export function ColorPanel() {
         <p className="mt-2 text-[11px] leading-tight text-neutral-500">
           Click to use · right-click to remove
         </p>
+        <div className="mt-3 flex gap-1.5">
+          <button
+            type="button"
+            onClick={savePalette}
+            className="flex-1 bg-neutral-800 py-2 text-xs hover:bg-neutral-700"
+          >
+            Export
+          </button>
+          <button
+            type="button"
+            onClick={() => paletteInputRef.current?.click()}
+            className="flex-1 bg-neutral-800 py-2 text-xs hover:bg-neutral-700"
+          >
+            Import
+          </button>
+        </div>
+        {loadError && (
+          <p role="alert" className="mt-1 text-[11px] text-red-400">{loadError}</p>
+        )}
+        <input
+          ref={paletteInputRef}
+          type="file"
+          accept="application/json,.json"
+          className="hidden"
+          onChange={loadPalette}
+        />
       </div>
     </div>
   )

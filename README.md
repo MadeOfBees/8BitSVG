@@ -1,18 +1,25 @@
 <div align="center">
 
-# 8bitsvg
+# 8BitSVG
 
-**Draw pixel art in the browser, crop it, and export a clean transparent SVG — or a pasteable React component.**
+[![CI](https://img.shields.io/github/actions/workflow/status/MadeOfBees/8BitSVG/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/MadeOfBees/8BitSVG/actions/workflows/ci.yml)
+[![Live demo](https://img.shields.io/badge/demo-live-brightgreen?style=flat-square)](https://madeofbees.github.io/8BitSVG/)
+[![License](https://img.shields.io/github/license/MadeOfBees/8BitSVG?style=flat-square)](LICENSE)
+
+**Draw pixel art in the browser, crop it, and export a clean transparent SVG, a pasteable React component, or a PNG — 100% in your browser.**
+
+[**▶ Open the live demo**](https://madeofbees.github.io/8BitSVG/)
 
 </div>
 
-8bitsvg is a tiny pixel-art editor that treats the *SVG* as the product. Paint on a
-grid with as many colors as you like, drag a crop box around the part you want, and it
-emits a tidy, transparent-background SVG whose rectangles are merged down to the fewest
-shapes — plus a one-click React component of the same art.
+Paint on a grid with as many colors as you like, drag a crop box around the part you want,
+and export a tidy transparent-background SVG whose rectangles are merged down to the fewest
+shapes — or a one-click React component of the same art, or a 1 px-per-cell PNG you can
+reimport later to keep working.
 
 It runs entirely in the browser. No backend, no accounts; your current drawing is
-autosaved to `localStorage` so a refresh never loses work.
+autosaved to `localStorage` so a refresh never loses work. A service worker pre-caches
+all assets so the app loads fully offline after the first visit.
 
 ---
 
@@ -28,6 +35,7 @@ autosaved to `localStorage` so a refresh never loses work.
 - [Project structure](#project-structure)
 - [Testing](#testing)
 - [Deployment (GitHub Pages)](#deployment-github-pages)
+- [Contributing](#contributing)
 - [License](#license)
 
 ## Features
@@ -41,13 +49,19 @@ autosaved to `localStorage` so a refresh never loses work.
 - ✂️ **Drag-to-crop on export** — draw a crop box over a live preview; "Fit to content"
   snaps it to the painted bounds.
 - 🧩 **Optimized SVG** — adjacent same-color cells are greedy-meshed into the fewest
-  `<rect>`s, so the output is small and clean, with a **transparent background by
-  construction** (no background rect is ever emitted).
+  `<rect>`s; colors with multiple rects are wrapped in `<g fill="…">` so each hex
+  appears exactly once in the output. **Transparent by construction** — no background
+  rect is ever emitted.
 - ⚛️ **React export** — the same art wrapped as a typed, prop-spreading `.tsx` component.
-- 💾 **Copy *or* download** — grab the SVG/component to the clipboard, or download a
-  `.svg` / `.tsx` file.
+- 🖼️ **PNG round-trip** — export the cropped region as a 1 px-per-cell transparent PNG;
+  re-import it later via File → Import PNG to restore the drawing and keep working.
+- 💾 **Copy or download** — grab the SVG/component to the clipboard, or download a
+  `.svg` / `.tsx` / `.png` file.
 - ↩️ **Undo / redo** — per-stroke history (up to 100 steps).
 - 🔍 **Zoom** — buttons, keyboard, or scroll-wheel anywhere over the workspace.
+- 📶 **Offline / installable** — a service worker pre-caches all assets; the app loads
+  fully offline after the first visit. PWA install prompt available in Chrome, Edge, and
+  Safari.
 - 🕹️ **Sharp & retro** — a pixel font ([Monocraft](https://github.com/IdreesInc/Monocraft)),
   monochrome line icons, hard corners, and crisp-edge rendering throughout.
 
@@ -61,8 +75,12 @@ crop to a region (drag a box, or fit-to-content)
    │
    ▼
 greedy-mesh the painted cells into the fewest <rect>s
+   │  then group by color → each hex once via <g fill="…">
    ▼
-transparent-background SVG   ──or──▶   pasteable React component
+SVG string  ──or──▶  React component  ──or──▶  PNG (1px/cell, transparent)
+                                                  │
+                                                  ▼
+                                         File → Import PNG  (round-trip)
 ```
 
 A few deliberate choices worth calling out:
@@ -73,10 +91,22 @@ A few deliberate choices worth calling out:
   visited — the classic greedy-meshing approach. The result covers every painted cell
   exactly once with no overlap (an invariant the tests assert) using far fewer shapes.
 
+- **Colors appear exactly once.** After meshing, rects are grouped by color. Colors with
+  two or more rects are wrapped in `<g fill="…">` so the hex code is written once as an
+  attribute on the group, and the child `<rect>` elements carry no `fill` of their own.
+  Colors with a single rect keep inline `fill` — a wrapper would add bytes rather than
+  save them.
+
 - **Transparent by construction.** No background rectangle is ever written, and the
   `viewBox` is the crop size, so the exported SVG is transparent wherever you didn't
   paint. The editor's checkerboard is purely a visual cue — it never makes it into the
   output.
+
+- **PNG is a first-class save format.** The offscreen canvas for PNG export draws each
+  cell at 1 px, matching the grid model 1:1, with a transparent background. Combined
+  with File → Import PNG (which reads the pixel colors back into the grid), this gives
+  a lossless round-trip: draw → export PNG → reimport → keep drawing, with no color
+  drift or metadata to manage.
 
 - **Crisp pixels, everywhere.** The canvas renders with `imageSmoothingEnabled = false`
   and `image-rendering: pixelated`; the SVG carries `shape-rendering="crispEdges"`; and
@@ -105,9 +135,12 @@ A few deliberate choices worth calling out:
 | --- | --- | --- | --- |
 | `B` / `P` | Pencil | `⌘/Ctrl + Z` | Undo |
 | `E` | Eraser | `⌘/Ctrl + ⇧ + Z` · `Ctrl + Y` | Redo |
-| `G` | Fill bucket | `+` / `=` | Zoom in |
-| `I` | Eyedropper | `-` | Zoom out |
-| `V` / `M` | Move grid | scroll wheel | Zoom (over the workspace) |
+| `G` | Fill bucket | `⌘/Ctrl + A` | Select whole canvas |
+| `I` | Eyedropper | `⌘/Ctrl + C` | Copy selection |
+| `S` | Select | `⌘/Ctrl + V` | Paste |
+| `V` / `M` | Move grid | `+` / `=` | Zoom in |
+| `Esc` | Clear selection | `-` | Zoom out |
+| `Delete` / `Backspace` | Delete selection | scroll wheel | Zoom (over the workspace) |
 | Arrow keys | Move grid (one cell per press) | | |
 
 Shortcuts are ignored while you're typing in an input or textarea.
@@ -116,6 +149,7 @@ Shortcuts are ignored while you're typing in an input or textarea.
 
 - [Vite 8](https://vitejs.dev/) + [React 19](https://react.dev/) + TypeScript
 - [Tailwind CSS v4](https://tailwindcss.com/) (CSS-first, via `@tailwindcss/vite`)
+- [vite-plugin-pwa](https://vite-pwa-org.netlify.app/) for service worker + offline caching
 - [react-icons](https://react-icons.github.io/react-icons/) (Lucide set) for the
   monochrome tool icons
 - [Monocraft](https://github.com/IdreesInc/Monocraft) for the pixel font
@@ -163,14 +197,14 @@ src/
                          exposed via context; debounced localStorage autosave
   lib/
     grid.ts              create / clone / index helpers, floodFill, contentBounds
-    svg.ts               greedyMesh → SVG string → pasteable React component
+    svg.ts               greedyMesh → groupByColor → SVG string / React component
     storage.ts           debounced load/save of the persisted project
   components/
     Canvas.tsx           the drawing canvas: checkerboard, pointer drawing (Bresenham
                          line-fill), move-grid drag, wheel-to-zoom
-    Toolbar.tsx          tools, size presets, undo/redo, zoom, clear, export
+    Toolbar.tsx          tools, size presets, undo/redo, zoom, clear, export, PNG import
     ColorPanel.tsx       color picker + validated hex field + saved swatches
-    ExportModal.tsx      drag-to-crop preview + SVG / React tabs + copy / download
+    ExportModal.tsx      drag-to-crop preview + SVG / React / PNG tabs + copy / download
     KeyboardShortcuts.tsx  global keydown handler (renders nothing)
   index.css              Tailwind v4 entry + Monocraft @font-face + crisp-pixel resets
 scripts/
@@ -179,14 +213,14 @@ scripts/
 
 ## Testing
 
-`npm test` runs the [Vitest](https://vitest.dev/) suite, which covers the pure logic
-that's most worth a safety net — the grid model and the SVG exporter:
+`npm test` runs the [Vitest](https://vitest.dev/) suite (30 tests), which covers the pure
+logic that's most worth a safety net — the grid model and the SVG exporter:
 
 - [`src/lib/grid.test.ts`](src/lib/grid.test.ts) — immutable cell writes, flood-fill
   contiguity (and filling transparent regions), and tight content bounds.
 - [`src/lib/svg.test.ts`](src/lib/svg.test.ts) — greedy meshing (merging, transparency,
-  the exact-cover / no-overlap invariant, and crop bounds), the SVG `viewBox` /
-  transparent output, and the shape of the generated React component.
+  the exact-cover / no-overlap invariant, and crop bounds), color grouping, the SVG
+  `viewBox` / transparent output, and the shape of the generated React component.
 
 The UI itself is checked by eye with `scripts/shot.mjs` (see [Commands](#commands)).
 
@@ -211,6 +245,11 @@ For a local production build under a custom path, override the base:
 ```bash
 VITE_BASE=/my-repo/ npm run build
 ```
+
+## Contributing
+
+`npm test` is the fast gate — run it before every push; it's what CI runs first. For UI
+changes, verify by eye with `node scripts/shot.mjs` (first run: `npx playwright install chromium`).
 
 ## License
 

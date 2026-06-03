@@ -6,12 +6,23 @@ import { toReactComponent, toSvgString } from '../lib/svg'
 import type { Bounds } from '../types'
 
 const MAX_PREVIEW = 384
+// Match the main canvas checker colors exactly.
+const CHECKER_LIGHT = '#ffffff'
+const CHECKER_DARK = '#d4d4db'
+
+/** CSS checkerboard at the given square size. */
+function checkerBg(sq: number): React.CSSProperties {
+  return {
+    background: `repeating-conic-gradient(${CHECKER_LIGHT} 0% 25%, ${CHECKER_DARK} 0% 50%) 0 0 / ${sq * 2}px ${sq * 2}px`,
+  }
+}
 
 export function ExportModal({ onClose }: { onClose: () => void }) {
   const { present } = useEditor()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
-  const [tab, setTab] = useState<'svg' | 'react'>('svg')
+  const panelRef = useRef<HTMLDivElement>(null)
+  const [tab, setTab] = useState<'svg' | 'react' | 'png'>('svg')
   const [copied, setCopied] = useState(false)
 
   const scale = Math.max(
@@ -30,19 +41,43 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
       },
   )
 
-  // Draw the preview (checkerboard + cells).
+  // Focus the panel on mount; return focus to whatever triggered the modal on unmount.
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null
+    panelRef.current?.focus()
+    return () => { previous?.focus() }
+  }, [])
+
+  // Focus trap: keep Tab cycling within the panel.
+  useEffect(() => {
+    const panel = panelRef.current
+    if (!panel) return
+    const trap = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return
+      const focusable = Array.from(
+        panel.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), [href], input:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+        ),
+      )
+      if (!focusable.length) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last.focus() }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first.focus() }
+      }
+    }
+    panel.addEventListener('keydown', trap)
+    return () => panel.removeEventListener('keydown', trap)
+  }, [])
+
+  // Draw the preview (cells only — checker comes from CSS on stageRef).
   useEffect(() => {
     const ctx = canvasRef.current?.getContext('2d')
     if (!ctx) return
     ctx.imageSmoothingEnabled = false
-    const checker = Math.max(4, Math.floor(scale / 2))
-    for (let y = 0; y < present.height * scale; y += checker) {
-      for (let x = 0; x < present.width * scale; x += checker) {
-        ctx.fillStyle =
-          ((x / checker) + (y / checker)) % 2 === 0 ? '#cdcdd3' : '#bcbcc4'
-        ctx.fillRect(x, y, checker, checker)
-      }
-    }
+    ctx.clearRect(0, 0, present.width * scale, present.height * scale)
     for (let cy = 0; cy < present.height; cy++) {
       for (let cx = 0; cx < present.width; cx++) {
         const c = present.cells[cy * present.width + cx]
@@ -71,24 +106,38 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
     height: Math.abs(a.y - b.y) + 1,
   })
 
-  // Drag-to-crop, driven by window listeners (not React's onPointerMove +
-  // pointer capture) so it survives the re-render each crop update triggers
-  // and keeps tracking if the cursor leaves the preview.
+  // Drag-to-crop using a stable window-listener approach.
+  // We capture the teardown function in a ref so the panel unmount effect can clean it up.
+  const dragTeardownRef = useRef<(() => void) | null>(null)
+
+  useEffect(() => {
+    return () => { dragTeardownRef.current?.() }
+  }, [])
+
   const startCrop = (e: React.PointerEvent) => {
+    dragTeardownRef.current?.() // cancel any in-flight drag
+    // Take a stable snapshot of present at drag-start time.
+    const presentAtStart = present
     const anchor = cellFrom(e.clientX, e.clientY)
     setCrop(rectFrom(anchor, anchor))
 
     const onMove = (ev: PointerEvent) => {
-      setCrop(rectFrom(anchor, cellFrom(ev.clientX, ev.clientY)))
+      const rect = stageRef.current?.getBoundingClientRect()
+      if (!rect) return
+      const x = Math.min(presentAtStart.width - 1, Math.max(0, Math.floor(((ev.clientX - rect.left) / rect.width) * presentAtStart.width)))
+      const y = Math.min(presentAtStart.height - 1, Math.max(0, Math.floor(((ev.clientY - rect.top) / rect.height) * presentAtStart.height)))
+      setCrop(rectFrom(anchor, { x, y }))
     }
-    const onUp = () => {
+    const teardown = () => {
       window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerup', onUp)
-      window.removeEventListener('pointercancel', onUp)
+      window.removeEventListener('pointerup', teardown)
+      window.removeEventListener('pointercancel', teardown)
+      dragTeardownRef.current = null
     }
+    dragTeardownRef.current = teardown
     window.addEventListener('pointermove', onMove)
-    window.addEventListener('pointerup', onUp)
-    window.addEventListener('pointercancel', onUp)
+    window.addEventListener('pointerup', teardown)
+    window.addEventListener('pointercancel', teardown)
   }
 
   const resetToContent = () => {
@@ -105,9 +154,13 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
   )
 
   const copy = async () => {
-    await navigator.clipboard.writeText(output)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
+    try {
+      await navigator.clipboard.writeText(output)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // Clipboard unavailable (permissions or insecure context) — no-op.
+    }
   }
 
   const download = () => {
@@ -118,8 +171,40 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
     const a = document.createElement('a')
     a.href = url
     a.download = `8bitsvg.${ext}`
+    document.body.appendChild(a)
     a.click()
-    URL.revokeObjectURL(url)
+    document.body.removeChild(a)
+    // Defer revoke so the browser has time to start the download.
+    setTimeout(() => URL.revokeObjectURL(url), 10_000)
+  }
+
+  const downloadPng = () => {
+    const offscreen = document.createElement('canvas')
+    offscreen.width = crop.width
+    offscreen.height = crop.height
+    const ctx = offscreen.getContext('2d')
+    if (!ctx) return
+    ctx.clearRect(0, 0, crop.width, crop.height)
+    for (let cy = 0; cy < crop.height; cy++) {
+      for (let cx = 0; cx < crop.width; cx++) {
+        const c = present.cells[(crop.y + cy) * present.width + (crop.x + cx)]
+        if (c) {
+          ctx.fillStyle = c
+          ctx.fillRect(cx, cy, 1, 1)
+        }
+      }
+    }
+    offscreen.toBlob((blob) => {
+      if (!blob) return
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = '8bitsvg.png'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      setTimeout(() => URL.revokeObjectURL(url), 10_000)
+    }, 'image/png')
   }
 
   return (
@@ -128,13 +213,18 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
       onClick={onClose}
     >
       <div
-        className="flex max-h-full w-full max-w-4xl flex-col gap-4 overflow-auto border border-white/10 bg-neutral-900 p-6 text-neutral-100 shadow-2xl md:flex-row"
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="export-modal-title"
+        tabIndex={-1}
+        className="flex max-h-full w-full max-w-4xl flex-col gap-4 overflow-auto border border-white/10 bg-neutral-900 p-6 text-neutral-100 shadow-2xl outline-none md:flex-row"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Crop preview */}
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Crop</h2>
+            <h2 id="export-modal-title" className="text-lg font-semibold">Export</h2>
             <button
               type="button"
               onClick={resetToContent}
@@ -147,7 +237,11 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
             ref={stageRef}
             onPointerDown={startCrop}
             className="relative cursor-crosshair touch-none self-start overflow-hidden"
-            style={{ width: present.width * scale, height: present.height * scale }}
+            style={{
+              width: present.width * scale,
+              height: present.height * scale,
+              ...checkerBg(scale),
+            }}
           >
             <canvas
               ref={canvasRef}
@@ -177,7 +271,7 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
         <div className="flex min-w-0 flex-1 flex-col gap-3">
           <div className="flex items-center justify-between">
             <div className="flex gap-1">
-              {(['svg', 'react'] as const).map((t) => (
+              {(['svg', 'react', 'png'] as const).map((t) => (
                 <button
                   key={t}
                   type="button"
@@ -188,12 +282,13 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
                       : 'bg-neutral-800 hover:bg-neutral-700'
                   }`}
                 >
-                  {t === 'svg' ? 'SVG' : 'React'}
+                  {t === 'svg' ? 'SVG' : t === 'react' ? 'React' : 'PNG'}
                 </button>
               ))}
             </div>
             <button
               type="button"
+              aria-label="Close"
               onClick={onClose}
               className="text-neutral-400 hover:text-white"
             >
@@ -201,30 +296,49 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
             </button>
           </div>
 
-          <textarea
-            readOnly
-            value={output}
-            spellCheck={false}
-            className="h-72 w-full flex-1 resize-none border border-white/10 bg-neutral-800 p-3 font-mc text-xs leading-relaxed text-neutral-200"
-          />
-
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={copy}
-              className="flex-1 bg-emerald-500 px-4 py-2 text-sm font-medium text-emerald-950 hover:bg-emerald-400"
-            >
-              {copied ? 'Copied!' : `Copy ${tab === 'svg' ? 'SVG' : 'component'}`}
-            </button>
-            <button
-              type="button"
-              onClick={download}
-              className="flex flex-1 items-center justify-center gap-1.5 bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400"
-            >
-              <LuDownload size={15} aria-hidden />
-              Download .{tab === 'svg' ? 'svg' : 'tsx'}
-            </button>
-          </div>
+          {tab === 'png' ? (
+            <div className="flex flex-1 flex-col items-start justify-start gap-4">
+              <p className="text-sm text-neutral-400">
+                Saves the cropped region as a PNG.
+                <br />
+                <span className="text-neutral-500">{crop.width}×{crop.height} px</span>
+              </p>
+              <button
+                type="button"
+                onClick={downloadPng}
+                className="flex items-center gap-1.5 bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400"
+              >
+                <LuDownload size={15} aria-hidden />
+                Download PNG
+              </button>
+            </div>
+          ) : (
+            <>
+              <textarea
+                readOnly
+                value={output}
+                spellCheck={false}
+                className="h-72 w-full flex-1 resize-none border border-white/10 bg-neutral-800 p-3 font-mc text-xs leading-relaxed text-neutral-200"
+              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={copy}
+                  className="flex-1 bg-emerald-500 px-4 py-2 text-sm font-medium text-emerald-950 hover:bg-emerald-400"
+                >
+                  {copied ? 'Copied!' : `Copy ${tab === 'svg' ? 'SVG' : 'component'}`}
+                </button>
+                <button
+                  type="button"
+                  onClick={download}
+                  className="flex flex-1 items-center justify-center gap-1.5 bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400"
+                >
+                  <LuDownload size={15} aria-hidden />
+                  Download .{tab === 'svg' ? 'svg' : 'tsx'}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

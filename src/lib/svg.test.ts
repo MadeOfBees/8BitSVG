@@ -74,6 +74,23 @@ describe('toSvgString', () => {
     // No full-canvas background rect → transparent.
     expect(svg).not.toContain('width="2" height="2" fill')
   })
+
+  it('wraps multiple same-color rects in a <g fill> group', () => {
+    // Two separate R cells → two rects of the same color → must be grouped.
+    const g = gridFrom(['R.', '.R'])
+    const svg = toSvgString(g, full(g))
+    expect(svg).toContain(`<g fill="${R}">`)
+    // Child rects must not carry their own fill attribute.
+    expect(svg).not.toMatch(/<rect[^>]+fill=/)
+  })
+
+  it('keeps inline fill for a color that appears only once', () => {
+    // Single R cell → one rect → no wrapper (a <g> would add bytes, not save them).
+    const g = gridFrom(['R.', '..'])
+    const svg = toSvgString(g, full(g))
+    expect(svg).not.toContain('<g ')
+    expect(svg).toContain(`fill="${R}"`)
+  })
 })
 
 describe('toReactComponent', () => {

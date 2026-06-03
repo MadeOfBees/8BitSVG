@@ -79,3 +79,79 @@ export function contentBounds(grid: Grid): Bounds | null {
 export function isEmpty(grid: Grid): boolean {
   return grid.cells.every((c) => c === null)
 }
+
+export function flipHorizontal(grid: Grid): Grid {
+  const { width: W, height: H, cells } = grid
+  const out: Cell[] = new Array(W * H)
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++)
+      out[y * W + x] = cells[y * W + (W - 1 - x)]
+  return { width: W, height: H, cells: out }
+}
+
+export function flipVertical(grid: Grid): Grid {
+  const { width: W, height: H, cells } = grid
+  const out: Cell[] = new Array(W * H)
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++)
+      out[y * W + x] = cells[(H - 1 - y) * W + x]
+  return { width: W, height: H, cells: out }
+}
+
+// New dimensions after rotation: width = H, height = W
+export function rotateCW(grid: Grid): Grid {
+  const { width: W, height: H, cells } = grid
+  const out: Cell[] = new Array(W * H)
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++)
+      out[x * H + (H - 1 - y)] = cells[y * W + x]
+  return { width: H, height: W, cells: out }
+}
+
+export function rotateCCW(grid: Grid): Grid {
+  const { width: W, height: H, cells } = grid
+  const out: Cell[] = new Array(W * H)
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++)
+      out[(W - 1 - x) * H + y] = cells[y * W + x]
+  return { width: H, height: W, cells: out }
+}
+
+export function rotate180(grid: Grid): Grid {
+  const { width: W, height: H, cells } = grid
+  const out: Cell[] = new Array(W * H)
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++)
+      out[y * W + x] = cells[(H - 1 - y) * W + (W - 1 - x)]
+  return { width: W, height: H, cells: out }
+}
+
+export function extractRegion(
+  grid: Grid,
+  rect: { x: number; y: number; width: number; height: number },
+): Cell[] {
+  const cells: Cell[] = []
+  for (let y = rect.y; y < rect.y + rect.height; y++)
+    for (let x = rect.x; x < rect.x + rect.width; x++)
+      cells.push(inBounds(grid, x, y) ? grid.cells[y * grid.width + x] : null)
+  return cells
+}
+
+export function pasteRegion(
+  grid: Grid,
+  cells: Cell[],
+  destX: number,
+  destY: number,
+  w: number,
+  h: number,
+): Grid {
+  const next = cloneGrid(grid)
+  for (let dy = 0; dy < h; dy++)
+    for (let dx = 0; dx < w; dx++) {
+      const gx = destX + dx
+      const gy = destY + dy
+      if (inBounds(grid, gx, gy)) next.cells[gy * grid.width + gx] = cells[dy * w + dx]
+    }
+  return next
+}
+
