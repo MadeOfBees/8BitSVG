@@ -8,6 +8,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![Bun](https://img.shields.io/badge/Bun-1-F9F1E1?style=flat-square&logo=bun&logoColor=black)](https://bun.sh/)
 [![GitHub Stars](https://img.shields.io/github/stars/MadeOfBees/8BitSVG?style=flat-square)](https://github.com/MadeOfBees/8BitSVG/stargazers)
 [![License](https://img.shields.io/github/license/MadeOfBees/8BitSVG?style=flat-square)](LICENSE)
 
@@ -162,25 +163,25 @@ Shortcuts are ignored while you're typing in an input or textarea.
 
 - **To use it:** any modern browser. Drawing uses a 2D `<canvas>`; clipboard export uses
   the async Clipboard API.
-- **To develop it:** **Node 20.19+** (or 22.12+) — Vite 8's requirement.
+- **To develop it:** **[Bun](https://bun.sh/)** (installs dependencies and runs scripts). Node 20.19+ also works if you prefer npm/pnpm.
 
 ## Getting started
 
 ```bash
-npm install
-npm run dev      # start the dev server at http://localhost:5173
+bun install
+bun run dev      # start the dev server at http://localhost:5173
 ```
 
 ## Commands
 
 ```bash
-npm run dev          # dev server with HMR → http://localhost:5173
-npm run build        # type-check (tsc -b) + production build to dist/
-npm run preview      # serve the production build locally
-npm run lint         # ESLint
+bun run dev          # dev server with HMR → http://localhost:5173
+bun run build        # type-check (tsc -b) + production build to dist/
+bun run preview      # serve the production build locally
+bun run lint         # ESLint
 
-npm test             # unit tests (Vitest)
-npm run test:watch   # Vitest in watch mode
+bun test             # unit tests (Vitest)
+bun run test:watch   # Vitest in watch mode
 ```
 
 ## Project structure
@@ -208,7 +209,7 @@ src/
 
 ## Testing
 
-`npm test` runs the [Vitest](https://vitest.dev/) suite (32 tests), which covers the pure
+`bun test` runs the [Vitest](https://vitest.dev/) suite (32 tests), which covers the pure
 logic that's most worth a safety net — the grid model and the SVG exporter:
 
 - [`src/lib/grid.test.ts`](src/lib/grid.test.ts) — immutable cell writes, flood-fill
@@ -236,12 +237,12 @@ To go live:
 For a local production build under a custom path, override the base:
 
 ```bash
-VITE_BASE=/my-repo/ npm run build
+VITE_BASE=/my-repo/ bun run build
 ```
 
 ## Contributing
 
-`npm test` is the fast gate — run it before every push; it's what CI runs first. For UI changes, verify by eye in the browser.
+`bun test` is the fast gate — run it before every push; it's what CI runs first. For UI changes, verify by eye in the browser.
 
 ## License
 
