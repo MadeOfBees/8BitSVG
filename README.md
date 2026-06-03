@@ -47,10 +47,8 @@ all assets so the app loads fully offline after the first visit.
 
 - ✏️ **Five tools** — pencil, eraser, flood-fill bucket, eyedropper, and a move tool
   that slides the whole grid around the workspace.
-- 🎨 **Unlimited colors** — a full color picker (with a validated hex field) plus a row
+- 🎨 **Unlimited colors** — well, 16,777,216, a full color picker (with a validated hex field) plus a row
   of saved swatches; right-click a swatch to remove it.
-- 🔲 **Fixed-size canvases** — 8², 16², 32², or 64² presets, with a checkerboard that
-  signals transparency.
 - ✂️ **Drag-to-crop on export** — draw a crop box over a live preview; "Fit to content"
   snaps it to the painted bounds.
 - 🧩 **Optimized SVG** — adjacent same-color cells are greedy-meshed into the fewest
@@ -157,7 +155,6 @@ Shortcuts are ignored while you're typing in an input or textarea.
 - [vite-plugin-pwa](https://vite-pwa-org.netlify.app/) for service worker + offline caching
 - [react-icons](https://react-icons.github.io/react-icons/) (Lucide set) for the
   monochrome tool icons
-- [Monocraft](https://github.com/IdreesInc/Monocraft) for the pixel font
 - [Vitest](https://vitest.dev/) for unit tests
 
 ## Requirements
