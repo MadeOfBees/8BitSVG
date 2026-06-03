@@ -213,7 +213,7 @@ scripts/
 
 ## Testing
 
-`npm test` runs the [Vitest](https://vitest.dev/) suite (30 tests), which covers the pure
+`npm test` runs the [Vitest](https://vitest.dev/) suite (32 tests), which covers the pure
 logic that's most worth a safety net — the grid model and the SVG exporter:
 
 - [`src/lib/grid.test.ts`](src/lib/grid.test.ts) — immutable cell writes, flood-fill
