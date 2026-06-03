@@ -30,18 +30,20 @@ all assets so the app loads fully offline after the first visit.
 
 ## Contents
 
-- [Features](#features)
-- [How it works](#how-it-works)
-- [Keyboard shortcuts](#keyboard-shortcuts)
-- [Tech stack](#tech-stack)
-- [Requirements](#requirements)
-- [Getting started](#getting-started)
-- [Commands](#commands)
-- [Project structure](#project-structure)
-- [Testing](#testing)
-- [Deployment (GitHub Pages)](#deployment-github-pages)
-- [Contributing](#contributing)
-- [License](#license)
+- [8BitSVG](#8bitsvg)
+  - [Contents](#contents)
+  - [Features](#features)
+  - [How it works](#how-it-works)
+  - [Keyboard shortcuts](#keyboard-shortcuts)
+  - [Tech stack](#tech-stack)
+  - [Requirements](#requirements)
+  - [Getting started](#getting-started)
+  - [Commands](#commands)
+  - [Project structure](#project-structure)
+  - [Testing](#testing)
+  - [Deployment (GitHub Pages)](#deployment-github-pages)
+  - [Contributing](#contributing)
+  - [License](#license)
 
 ## Features
 
@@ -153,8 +155,7 @@ Shortcuts are ignored while you're typing in an input or textarea.
 - [Vite 8](https://vitejs.dev/) + [React 19](https://react.dev/) + TypeScript
 - [Tailwind CSS v4](https://tailwindcss.com/) (CSS-first, via `@tailwindcss/vite`)
 - [vite-plugin-pwa](https://vite-pwa-org.netlify.app/) for service worker + offline caching
-- [react-icons](https://react-icons.github.io/react-icons/) (Lucide set) for the
-  monochrome tool icons
+- [react-icons](https://react-icons.github.io/react-icons/) (Lucide set) for the monochrome tool icons
 - [Vitest](https://vitest.dev/) for unit tests
 
 ## Requirements
