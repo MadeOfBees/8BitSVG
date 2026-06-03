@@ -2,15 +2,15 @@
 
 # 8BitSVG
 
-[![CI](https://img.shields.io/github/actions/workflow/status/MadeOfBees/8BitSVG/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/MadeOfBees/8BitSVG/actions/workflows/ci.yml)
-[![Live demo](https://img.shields.io/badge/demo-live-brightgreen?style=flat-square)](https://madeofbees.github.io/8BitSVG/)
-[![PWA](https://img.shields.io/badge/PWA-installable-5A0FC8?style=flat-square&logo=pwa)](https://madeofbees.github.io/8BitSVG/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
-[![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev/)
-[![Bun](https://img.shields.io/badge/Bun-1-F9F1E1?style=flat-square&logo=bun&logoColor=black)](https://bun.sh/)
-[![GitHub Stars](https://img.shields.io/github/stars/MadeOfBees/8BitSVG?style=flat-square)](https://github.com/MadeOfBees/8BitSVG/stargazers)
-[![License](https://img.shields.io/github/license/MadeOfBees/8BitSVG?style=flat-square)](LICENSE)
+[![CI](https://badgen.net/github/checks/MadeOfBees/8BitSVG/main)](https://github.com/MadeOfBees/8BitSVG/actions/workflows/ci.yml)
+[![Live demo](https://badgen.net/badge/demo/live/green)](https://madeofbees.github.io/8BitSVG/)
+[![PWA](https://badgen.net/badge/PWA/installable/purple)](https://madeofbees.github.io/8BitSVG/)
+[![TypeScript](https://badgen.net/badge/TypeScript/6/blue)](https://www.typescriptlang.org/)
+[![React](https://badgen.net/badge/React/19/cyan)](https://react.dev/)
+[![Vite](https://badgen.net/badge/Vite/8/purple)](https://vitejs.dev/)
+[![Bun](https://badgen.net/badge/Bun/1/yellow)](https://bun.sh/)
+[![GitHub Stars](https://badgen.net/github/stars/MadeOfBees/8BitSVG)](https://github.com/MadeOfBees/8BitSVG/stargazers)
+[![License](https://badgen.net/github/license/MadeOfBees/8BitSVG)](LICENSE)
 
 **Draw pixel art in the browser, crop it, and export a clean transparent SVG, a pasteable React component, or a PNG — 100% in your browser.**
 
