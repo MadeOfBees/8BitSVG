@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "ignoreDeprecations": "6.0",
+    "lib": ["ESNext"],
+    "strict": true,
+    "types": [],
+    "skipLibCheck": true,
+    "rootDir": "../..",
+    "outDir": "../dist/_lua"
+  },
+  "tstl": {
+    "luaTarget": "5.4",
+    "luaLibImport": "require",
+    "luaBundle": "8bitsvg.generated.lua",
+    "luaBundleEntry": "export.ts",
+    "noImplicitSelf": true
+  },
+  "include": ["export.ts"]
+}

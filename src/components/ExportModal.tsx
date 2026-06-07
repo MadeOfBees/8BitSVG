@@ -3,6 +3,7 @@ import { LuDownload } from 'react-icons/lu'
 import { useEditor } from '../state/useEditor'
 import { contentBounds } from '../lib/grid'
 import { toReactComponent, toSvgString } from '../lib/svg'
+import { toAseBuffer } from '../lib/ase-writer'
 import type { Bounds } from '../types'
 
 const MAX_PREVIEW = 384
@@ -18,15 +19,19 @@ function checkerBg(sq: number): React.CSSProperties {
 }
 
 export function ExportModal({ onClose }: { onClose: () => void }) {
-  const { present } = useEditor()
+  const { present, frames } = useEditor()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
-  const [tab, setTab] = useState<'svg' | 'react' | 'png'>('svg')
+  const [tab, setTab] = useState<'svg' | 'react' | 'png' | 'ase'>('svg')
   const [copied, setCopied] = useState(false)
+  const [copyError, setCopyError] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
+  const [downloading, setDownloading] = useState(false)
 
+  // Scale so the preview fills up to MAX_PREVIEW px but is never smaller than 200px.
   const scale = Math.max(
-    4,
+    Math.ceil(200 / Math.max(present.width, present.height)),
     Math.floor(MAX_PREVIEW / Math.max(present.width, present.height)),
   )
 
@@ -53,6 +58,7 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
     const panel = panelRef.current
     if (!panel) return
     const trap = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.preventDefault(); onClose(); return }
       if (e.key !== 'Tab') return
       const focusable = Array.from(
         panel.querySelectorAll<HTMLElement>(
@@ -159,8 +165,33 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     } catch {
-      // Clipboard unavailable (permissions or insecure context) — no-op.
+      setCopyError(true)
+      setTimeout(() => setCopyError(false), 2000)
     }
+  }
+
+  const showExportError = (msg: string) => {
+    setExportError(msg)
+    setTimeout(() => setExportError(null), 4000)
+  }
+
+  const downloadAse = () => {
+    let buf: Uint8Array<ArrayBuffer>
+    try {
+      buf = toAseBuffer(frames)
+    } catch (e) {
+      showExportError(`Aseprite export failed: ${e instanceof Error ? e.message : 'unknown error'}`)
+      return
+    }
+    const blob = new Blob([buf], { type: 'application/octet-stream' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'pixel-art.aseprite'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 10_000)
   }
 
   const download = () => {
@@ -183,7 +214,10 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
     offscreen.width = crop.width
     offscreen.height = crop.height
     const ctx = offscreen.getContext('2d')
-    if (!ctx) return
+    if (!ctx) {
+      showExportError('PNG export failed: canvas context unavailable.')
+      return
+    }
     ctx.clearRect(0, 0, crop.width, crop.height)
     for (let cy = 0; cy < crop.height; cy++) {
       for (let cx = 0; cx < crop.width; cx++) {
@@ -194,7 +228,9 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
         }
       }
     }
+    setDownloading(true)
     offscreen.toBlob((blob) => {
+      setDownloading(false)
       if (!blob) return
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -263,7 +299,7 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
             />
           </div>
           <p className="text-xs text-neutral-400">
-            Drag on the preview to set the crop. {crop.width}×{crop.height} cells.
+            Drag on the preview to set the crop. {crop.width}x{crop.height} cells.
           </p>
         </div>
 
@@ -271,7 +307,7 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
         <div className="flex min-w-0 flex-1 flex-col gap-3">
           <div className="flex items-center justify-between">
             <div className="flex gap-1">
-              {(['svg', 'react', 'png'] as const).map((t) => (
+              {(['svg', 'react', 'png', 'ase'] as const).map((t) => (
                 <button
                   key={t}
                   type="button"
@@ -282,7 +318,7 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
                       : 'bg-neutral-800 hover:bg-neutral-700'
                   }`}
                 >
-                  {t === 'svg' ? 'SVG' : t === 'react' ? 'React' : 'PNG'}
+                  {t === 'svg' ? 'SVG' : t === 'react' ? 'React' : t === 'png' ? 'PNG' : 'Aseprite'}
                 </button>
               ))}
             </div>
@@ -296,21 +332,40 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
             </button>
           </div>
 
-          {tab === 'png' ? (
+          {tab === 'ase' ? (
+            <div className="flex flex-1 flex-col items-start justify-start gap-4">
+              <p className="text-sm text-neutral-400">
+                Saves all {frames.length} frame{frames.length !== 1 ? 's' : ''} with {frames[0]?.layers.length ?? 1} layer{(frames[0]?.layers.length ?? 1) !== 1 ? 's' : ''} as an Aseprite file.
+                <br />
+                <span className="text-neutral-500">{present.width}x{present.height} px · RGBA</span>
+              </p>
+              <button
+                type="button"
+                onClick={downloadAse}
+                className="flex items-center gap-1.5 bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400"
+              >
+                <LuDownload size={15} aria-hidden />
+                Download .aseprite
+              </button>
+              {exportError && <p role="alert" className="text-xs text-red-400">{exportError}</p>}
+            </div>
+          ) : tab === 'png' ? (
             <div className="flex flex-1 flex-col items-start justify-start gap-4">
               <p className="text-sm text-neutral-400">
                 Saves the cropped region as a PNG.
                 <br />
-                <span className="text-neutral-500">{crop.width}×{crop.height} px</span>
+                <span className="text-neutral-500">{crop.width}x{crop.height} px</span>
               </p>
               <button
                 type="button"
                 onClick={downloadPng}
-                className="flex items-center gap-1.5 bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400"
+                disabled={downloading}
+                className="flex items-center gap-1.5 bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400 disabled:opacity-60"
               >
                 <LuDownload size={15} aria-hidden />
-                Download PNG
+                {downloading ? 'Saving…' : 'Download PNG'}
               </button>
+              {exportError && <p role="alert" className="text-xs text-red-400">{exportError}</p>}
             </div>
           ) : (
             <>
@@ -324,9 +379,9 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
                 <button
                   type="button"
                   onClick={copy}
-                  className="flex-1 bg-emerald-500 px-4 py-2 text-sm font-medium text-emerald-950 hover:bg-emerald-400"
+                  className={`flex-1 px-4 py-2 text-sm font-medium ${copyError ? 'bg-red-600 text-white' : 'bg-emerald-500 text-emerald-950 hover:bg-emerald-400'}`}
                 >
-                  {copied ? 'Copied!' : `Copy ${tab === 'svg' ? 'SVG' : 'component'}`}
+                  {copied ? 'Copied!' : copyError ? 'Copy failed' : `Copy ${tab === 'svg' ? 'SVG' : 'component'}`}
                 </button>
                 <button
                   type="button"

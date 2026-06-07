@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useEditor } from '../state/useEditor'
+import { clampBounds } from '../lib/grid'
 import type { Bounds } from '../types'
 
 const GRID_LINE = 'rgba(0,0,0,0.08)'
@@ -17,6 +18,8 @@ function hexToU32(hex: string): number {
   const g = parseInt(hex.slice(3, 5), 16)
   const b = parseInt(hex.slice(5, 7), 16)
   v = (0xFF << 24 | b << 16 | g << 8 | r) >>> 0
+  // Bound the cache — pixel art uses few colors, but never let it grow without limit.
+  if (_colorCache.size > 1024) _colorCache.clear()
   _colorCache.set(hex, v)
   return v
 }
@@ -32,6 +35,7 @@ export function Canvas() {
   const prevCellsRef   = useRef<(string | null)[]>([])
 
   const drawing = useRef(false)
+  const stroking = useRef(false)
   const lastCell = useRef<{ x: number; y: number } | null>(null)
   const selecting = useRef(false)
   const selectStart = useRef<{ x: number; y: number } | null>(null)
@@ -79,7 +83,25 @@ export function Canvas() {
 
       const cx = i % W
       const cy = (i / W) | 0
-      buf[i] = cell ? hexToU32(cell) : ((cx + cy) & 1 ? CHECKER_DARK_U32 : CHECKER_LIGHT_U32)
+      const checkerU32 = (cx + cy) & 1 ? CHECKER_DARK_U32 : CHECKER_LIGHT_U32
+      if (!cell) {
+        buf[i] = checkerU32
+      } else if (cell.length === 9) {
+        // Semi-transparent: composite over checker in software (canvas is alpha:false)
+        const sA = parseInt(cell.slice(7, 9), 16) / 255
+        const sR = parseInt(cell.slice(1, 3), 16)
+        const sG = parseInt(cell.slice(3, 5), 16)
+        const sB = parseInt(cell.slice(5, 7), 16)
+        const bgR = checkerU32 & 0xFF
+        const bgG = (checkerU32 >>> 8) & 0xFF
+        const bgB = (checkerU32 >>> 16) & 0xFF
+        const r = Math.round(sR * sA + bgR * (1 - sA))
+        const g = Math.round(sG * sA + bgG * (1 - sA))
+        const b = Math.round(sB * sA + bgB * (1 - sA))
+        buf[i] = (0xFF << 24 | b << 16 | g << 8 | r) >>> 0
+      } else {
+        buf[i] = hexToU32(cell)
+      }
 
       if (cx < minX) minX = cx
       if (cy < minY) minY = cy
@@ -152,6 +174,7 @@ export function Canvas() {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
+      if (t && wrapperRef.current && !wrapperRef.current.contains(t)) return
       let dx = 0
       let dy = 0
       switch (e.key) {
@@ -205,6 +228,8 @@ export function Canvas() {
     setDraftSel(rect)
   }
 
+  // Bresenham's line algorithm — interpolates every cell between two points so
+  // fast pointer moves don't leave gaps in pencil/eraser strokes.
   const stroke = useCallback(
     (from: { x: number; y: number }, to: { x: number; y: number }) => {
       let { x: x0, y: y0 } = from
@@ -275,8 +300,11 @@ export function Canvas() {
     }
 
     dispatch({ type: 'BEGIN_STROKE' })
+    stroking.current = true
     applyTool(cell.x, cell.y)
 
+    // fill is one-shot (the FLOOD_FILL dispatch is immediate); eyedropper reads without painting.
+    // Neither needs the drag-continuation path, so drawing.current stays false for both.
     if (tool === 'pencil' || tool === 'eraser') {
       drawing.current = true
       lastCell.current = cell
@@ -309,19 +337,16 @@ export function Canvas() {
       selectStart.current = null
       return
     }
+    if (stroking.current) {
+      dispatch({ type: 'END_STROKE' })
+      stroking.current = false
+    }
     drawing.current = false
     lastCell.current = null
   }
 
   const rawSel = draftSel ?? selection
-  const displaySel = rawSel
-    ? {
-        x: Math.max(0, Math.min(rawSel.x, present.width - 1)),
-        y: Math.max(0, Math.min(rawSel.y, present.height - 1)),
-        width: Math.min(rawSel.width, present.width - Math.max(0, rawSel.x)),
-        height: Math.min(rawSel.height, present.height - Math.max(0, rawSel.y)),
-      }
-    : null
+  const displaySel = rawSel ? clampBounds(rawSel, present.width, present.height) : null
 
   const cursor =
     tool === 'move'       ? 'grab' :
@@ -334,7 +359,7 @@ export function Canvas() {
     <div
       ref={wrapperRef}
       role="application"
-      aria-label={`Pixel canvas, ${present.width}×${present.height} cells`}
+      aria-label={`Pixel canvas, ${present.width}x${present.height} cells`}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={endStroke}
@@ -347,6 +372,16 @@ export function Canvas() {
         className="relative shadow-2xl ring-1 ring-black/20"
         style={{ transform: `translate(${offset.x}px, ${offset.y}px)` }}
       >
+        {/* Off-screen live region — announces active selection to screen readers */}
+        {selection && (
+          <span
+            role="status"
+            aria-live="polite"
+            className="sr-only"
+          >
+            Selection: {selection.width}x{selection.height} at ({selection.x}, {selection.y})
+          </span>
+        )}
         {/* Pixel canvas: 1px per cell, CSS-scaled for zoom */}
         <canvas
           ref={pixelCanvasRef}

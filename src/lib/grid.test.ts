@@ -107,7 +107,7 @@ describe('contentBounds', () => {
   })
 })
 
-// Helpers for transform tests — non-square (3×2) grids to catch axis-swap bugs.
+// Helpers for transform tests — non-square (3x2) grids to catch axis-swap bugs.
 const A = '#aaaaaa'
 const B = '#bbbbbb'
 const C = '#cccccc'
@@ -121,7 +121,7 @@ function makeGrid(cells: (string | null)[], w: number, h: number): Grid {
 }
 
 describe('flipHorizontal', () => {
-  it('mirrors columns on a 3×2 grid', () => {
+  it('mirrors columns on a 3x2 grid', () => {
     // row0=[A,B,C] row1=[D,E,F] → row0=[C,B,A] row1=[F,E,D]
     const g = makeGrid([A, B, C, D, E, F], 3, 2)
     expect(flipHorizontal(g)).toMatchObject({ width: 3, height: 2, cells: [C, B, A, F, E, D] })
@@ -134,7 +134,7 @@ describe('flipHorizontal', () => {
 })
 
 describe('flipVertical', () => {
-  it('mirrors rows on a 3×2 grid', () => {
+  it('mirrors rows on a 3x2 grid', () => {
     // row0=[A,B,C] row1=[D,E,F] → row0=[D,E,F] row1=[A,B,C]
     const g = makeGrid([A, B, C, D, E, F], 3, 2)
     expect(flipVertical(g)).toMatchObject({ width: 3, height: 2, cells: [D, E, F, A, B, C] })
@@ -142,7 +142,7 @@ describe('flipVertical', () => {
 })
 
 describe('rotateCW', () => {
-  it('swaps dimensions on a 3×2 grid', () => {
+  it('swaps dimensions on a 3x2 grid', () => {
     const g = makeGrid([A, B, C, D, E, F], 3, 2)
     const r = rotateCW(g)
     expect(r.width).toBe(2)
@@ -150,8 +150,8 @@ describe('rotateCW', () => {
   })
 
   it('produces the correct layout: left column becomes top row', () => {
-    // Input 3×2: row0=[A,B,C] row1=[D,E,F]
-    // CW → 2×3:  row0=[D,A] row1=[E,B] row2=[F,C]
+    // Input 3x2: row0=[A,B,C] row1=[D,E,F]
+    // CW → 2x3:  row0=[D,A] row1=[E,B] row2=[F,C]
     const g = makeGrid([A, B, C, D, E, F], 3, 2)
     expect(rotateCW(g).cells).toEqual([D, A, E, B, F, C])
   })
@@ -192,7 +192,7 @@ describe('rotate180', () => {
 describe('extractRegion', () => {
   it('extracts a sub-region in row-major order', () => {
     const g = setCell(createGrid(3, 3), 1, 1, '#ff0000')
-    // Extract 2×2 starting at (1,1): cells (1,1)=red, (2,1)=null, (1,2)=null, (2,2)=null
+    // Extract 2x2 starting at (1,1): cells (1,1)=red, (2,1)=null, (1,2)=null, (2,2)=null
     expect(extractRegion(g, { x: 1, y: 1, width: 2, height: 2 })).toEqual([
       '#ff0000', null,
       null,      null,
@@ -201,7 +201,7 @@ describe('extractRegion', () => {
 
   it('pads out-of-bounds coordinates with null', () => {
     const g = createGrid(2, 2)
-    // Extract 2×2 starting at (1,1): only (1,1) is in-bounds; (2,*) and (*,2) are OOB
+    // Extract 2x2 starting at (1,1): only (1,1) is in-bounds; (2,*) and (*,2) are OOB
     const cells = extractRegion(g, { x: 1, y: 1, width: 2, height: 2 })
     expect(cells).toHaveLength(4)
     expect(cells).toEqual([null, null, null, null])
@@ -222,7 +222,7 @@ describe('pasteRegion', () => {
 
   it('silently skips cells that would land out of bounds', () => {
     const g = createGrid(2, 2)
-    // Paste 2×2 at (1,1): only (1,1) is in-bounds
+    // Paste 2x2 at (1,1): only (1,1) is in-bounds
     const result = pasteRegion(g, ['#ff0000', null, null, null], 1, 1, 2, 2)
     expect(getCell(result, 1, 1)).toBe('#ff0000')
     expect(result.width).toBe(2)

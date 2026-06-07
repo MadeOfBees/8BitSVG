@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useEditor } from '../state/useEditor'
 import type { Tool } from '../types'
 
@@ -16,11 +16,21 @@ const TOOL_KEYS: Record<string, Tool> = {
 
 /** Global keyboard shortcuts. Renders nothing. */
 export function KeyboardShortcuts() {
-  const { dispatch, present } = useEditor()
+  const { dispatch, present, selection } = useEditor()
   const presentRef = useRef(present)
   useEffect(() => { presentRef.current = present }, [present])
+  const selectionRef = useRef(selection)
+  useEffect(() => { selectionRef.current = selection }, [selection])
+
+  const [flash, setFlash] = useState<string | null>(null)
 
   useEffect(() => {
+    let flashTimer: ReturnType<typeof setTimeout> | undefined
+    const showFlash = (msg: string) => {
+      setFlash(msg)
+      clearTimeout(flashTimer)
+      flashTimer = setTimeout(() => setFlash(null), 1400)
+    }
     const onKey = (e: KeyboardEvent) => {
       // Don't hijack typing in inputs/textareas.
       const target = e.target as HTMLElement | null
@@ -54,6 +64,7 @@ export function KeyboardShortcuts() {
       }
       if (mod && key === 'c') {
         e.preventDefault()
+        if (!selectionRef.current) { showFlash('Nothing selected to copy'); return }
         dispatch({ type: 'COPY_SELECTION' })
         return
       }
@@ -69,11 +80,21 @@ export function KeyboardShortcuts() {
       }
       if (mod && key === 'x') {
         e.preventDefault()
+        if (!selectionRef.current) { showFlash('Nothing selected to cut'); return }
         dispatch({ type: 'COPY_SELECTION' })
         dispatch({ type: 'DELETE_SELECTION' })
         return
       }
       if (mod) return // leave other modified combos alone
+
+      if (key === 'x') {
+        dispatch({ type: 'SWAP_COLORS' })
+        return
+      }
+      if (key === 'd') {
+        dispatch({ type: 'RESET_COLORS' })
+        return
+      }
 
       if (e.key === 'Escape') {
         dispatch({ type: 'SET_SELECTION', rect: null })
@@ -99,8 +120,18 @@ export function KeyboardShortcuts() {
     }
 
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      clearTimeout(flashTimer)
+    }
   }, [dispatch])
 
-  return null
+  return flash ? (
+    <div
+      role="status"
+      className="pointer-events-none fixed bottom-20 left-1/2 z-50 -translate-x-1/2 border border-white/10 bg-neutral-800/95 px-3 py-1.5 text-xs text-neutral-100 shadow-lg"
+    >
+      {flash}
+    </div>
+  ) : null
 }

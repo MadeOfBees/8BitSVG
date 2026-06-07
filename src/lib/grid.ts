@@ -1,8 +1,18 @@
 import type { Bounds, Cell, Grid } from '../types'
 
+/**
+ * Create an array of `n` copies of `value`. Used instead of `new Array(n).fill()`
+ * so this module transpiles to Lua (tstl rejects `new Array(length)`).
+ */
+export function filledArray<T>(n: number, value: T): T[] {
+  const a: T[] = []
+  for (let i = 0; i < n; i++) a.push(value)
+  return a
+}
+
 /** Create a blank (fully transparent) grid. */
 export function createGrid(width: number, height: number): Grid {
-  return { width, height, cells: new Array<Cell>(width * height).fill(null) }
+  return { width, height, cells: filledArray<Cell>(width * height, null) }
 }
 
 /** Shallow-copy a grid with a fresh cells array (safe to mutate for history). */
@@ -43,7 +53,7 @@ export function floodFill(grid: Grid, x: number, y: number, color: Cell): Grid {
 
   const next = cloneGrid(grid)
   const stack: [number, number][] = [[x, y]]
-  while (stack.length) {
+  while (stack.length > 0) {
     const [cx, cy] = stack.pop()!
     if (!inBounds(grid, cx, cy)) continue
     const i = indexOf(grid, cx, cy)
@@ -80,9 +90,21 @@ export function isEmpty(grid: Grid): boolean {
   return grid.cells.every((c) => c === null)
 }
 
+/** Clamp a Bounds rectangle so it stays fully inside a wxh grid (never negative). */
+export function clampBounds(b: Bounds, w: number, h: number): Bounds {
+  const x = Math.max(0, Math.min(b.x, w - 1))
+  const y = Math.max(0, Math.min(b.y, h - 1))
+  return {
+    x,
+    y,
+    width: Math.max(0, Math.min(b.width, w - x)),
+    height: Math.max(0, Math.min(b.height, h - y)),
+  }
+}
+
 export function flipHorizontal(grid: Grid): Grid {
   const { width: W, height: H, cells } = grid
-  const out: Cell[] = new Array(W * H)
+  const out: Cell[] = filledArray<Cell>(W * H, null)
   for (let y = 0; y < H; y++)
     for (let x = 0; x < W; x++)
       out[y * W + x] = cells[y * W + (W - 1 - x)]
@@ -91,7 +113,7 @@ export function flipHorizontal(grid: Grid): Grid {
 
 export function flipVertical(grid: Grid): Grid {
   const { width: W, height: H, cells } = grid
-  const out: Cell[] = new Array(W * H)
+  const out: Cell[] = filledArray<Cell>(W * H, null)
   for (let y = 0; y < H; y++)
     for (let x = 0; x < W; x++)
       out[y * W + x] = cells[(H - 1 - y) * W + x]
@@ -101,7 +123,7 @@ export function flipVertical(grid: Grid): Grid {
 // New dimensions after rotation: width = H, height = W
 export function rotateCW(grid: Grid): Grid {
   const { width: W, height: H, cells } = grid
-  const out: Cell[] = new Array(W * H)
+  const out: Cell[] = filledArray<Cell>(W * H, null)
   for (let y = 0; y < H; y++)
     for (let x = 0; x < W; x++)
       out[x * H + (H - 1 - y)] = cells[y * W + x]
@@ -110,7 +132,7 @@ export function rotateCW(grid: Grid): Grid {
 
 export function rotateCCW(grid: Grid): Grid {
   const { width: W, height: H, cells } = grid
-  const out: Cell[] = new Array(W * H)
+  const out: Cell[] = filledArray<Cell>(W * H, null)
   for (let y = 0; y < H; y++)
     for (let x = 0; x < W; x++)
       out[(W - 1 - x) * H + y] = cells[y * W + x]
@@ -119,7 +141,7 @@ export function rotateCCW(grid: Grid): Grid {
 
 export function rotate180(grid: Grid): Grid {
   const { width: W, height: H, cells } = grid
-  const out: Cell[] = new Array(W * H)
+  const out: Cell[] = filledArray<Cell>(W * H, null)
   for (let y = 0; y < H; y++)
     for (let x = 0; x < W; x++)
       out[y * W + x] = cells[(H - 1 - y) * W + (W - 1 - x)]

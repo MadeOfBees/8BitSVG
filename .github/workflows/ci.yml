@@ -23,4 +23,8 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run lint
       - run: bun test
-      - run: bun run build
+      - run: bun run build  # includes tsc -b on the main app
+      # The Aseprite extension shares src/lib/svg.ts — type-check it separately and
+      # verify it still packages, so a signature change in svg.ts can't break it silently.
+      - run: bunx tsc --noEmit -p aseprite-ext/tsconfig.json
+      - run: bun run build:ext

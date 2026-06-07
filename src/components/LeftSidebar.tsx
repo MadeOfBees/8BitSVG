@@ -34,9 +34,10 @@ export function LeftSidebar() {
           type="button"
           title={label}
           onClick={() => dispatch({ type: 'SET_TOOL', tool: id })}
+          aria-pressed={tool === id}
           className={`flex h-10 w-full items-center justify-center transition ${
             tool === id
-              ? 'bg-indigo-500 ring-2 ring-inset ring-indigo-300'
+              ? 'bg-white/15 ring-2 ring-inset ring-white/20'
               : 'hover:bg-neutral-700'
           }`}
         >
@@ -78,7 +79,7 @@ export function LeftSidebar() {
         <LuPlus size={14} />
       </button>
       <span className="py-0.5 text-center text-xs tabular-nums text-neutral-400">
-        ×{zoom}
+        x{zoom}
       </span>
       <button
         type="button"

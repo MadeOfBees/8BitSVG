@@ -1,0 +1,11 @@
+{
+  "name": "8bitsvg-exporter",
+  "displayName": "8BitSVG Exporter",
+  "description": "Export the active sprite as an optimized SVG and a typed React component using 8BitSVG's greedy-mesh algorithm.",
+  "version": "0.2.0",
+  "author": { "name": "MadeOfBees", "url": "https://github.com/MadeOfBees/8BitSVG" },
+  "license": "AGPL-3.0-only",
+  "contributes": {
+    "scripts": [{ "path": "./main.lua" }]
+  }
+}

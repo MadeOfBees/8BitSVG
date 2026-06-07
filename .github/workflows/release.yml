@@ -1,0 +1,29 @@
+name: Release extension
+
+# Build the Aseprite extension and attach it to a GitHub Release so users can
+# download it without building. Trigger by pushing a version tag:
+#   git tag v0.2.0 && git push origin v0.2.0
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build + attach .aseprite-extension
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      # Gate the release on the test suite (includes the Lua parity test).
+      - run: bun test
+      - run: bun run build:ext
+      - name: Attach extension to the release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: aseprite-ext/dist/8bitsvg.aseprite-extension
+          generate_release_notes: true
